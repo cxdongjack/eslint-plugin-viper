@@ -1,0 +1,24 @@
+{
+  "name": "@dk/eslint-plugin-viper",
+  "version": "1.0.0",
+  "description": "An ESLint plugin to extract and lint viper scripts.",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cxdongjack/eslint-plugin-viper"
+  },
+  "keywords": [
+    "eslint-plugin",
+    "eslintplugin",
+    "eslint",
+    "viper"
+  ],
+  "main": "src/index.js",
+  "devDependencies": {
+    "eslint": "^3.2.2",
+    "mocha": "^3.0.1"
+  },
+  "scripts": {
+    "test": "mocha"
+  }
+}
