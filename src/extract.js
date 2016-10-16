@@ -67,7 +67,8 @@ function parseIncluded(cnt) {
 function extractGlobals(target) {
     // 找到当前模块的all.js
     var dirname = path.dirname(target);
-    var all = file.recurseUpFindFile('all.js', dirname);
+    // var all = file.recurseUpFindFile('all.js', dirname);
+    var all = findAll(target);
     var files = parseIncluded(file.read(all));
     // 提取模块内的exports
     var exports = files.filter(function(item) {
@@ -84,4 +85,17 @@ function extractGlobals(target) {
     return exports.concat(globals);
 }
 
+function findAll(target) {
+    // 如果自身包含返回自身
+    if (file.read(target).indexOf('include([') !== -1) {
+        return target;
+    }
+    // 否则查找递归向上查找all.js
+    var dirname = path.dirname(target);
+    var all = file.recurseUpFindFile('all.js', dirname);
+    return all;
+}
+
 module.exports = extractGlobals;
+module.exports.findAll = findAll;
+module.exports.parseIncluded = parseIncluded;

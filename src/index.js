@@ -1,38 +1,10 @@
 "use strict";
 
+// inspired by: eslint-plugin-html
+
 var path = require("path");
-//var extract = require("./extract");
-var extractGlobals = require("./global");
+var extractGlobals = require("./extract");
 var tmpl = require("./tmpl");
-
-var htmlExtensions = [
-  ".erb",
-  ".handelbars",
-  ".hbs",
-  ".htm",
-  ".html",
-  ".mustache",
-  ".php",
-  ".tag",
-  ".twig",
-  ".vue",
-  ".we",
-];
-
-var xmlExtensions = [
-  ".xhtml",
-  ".xml",
-];
-
-// Disclaimer:
-//
-// This is not a long term viable solution. ESLint needs to improve its processor API to
-// provide access to the configuration before actually preprocess files, but it's not
-// planed yet. This solution is quite ugly but shouldn't alter eslint process.
-//
-// Related github issues:
-// https://github.com/eslint/eslint/issues/3422
-// https://github.com/eslint/eslint/issues/4153
 
 var needle = path.join("lib", "eslint.js");
 var eslint;
@@ -46,38 +18,19 @@ for (var key in require.cache) {
 }
 
 if (!eslint) {
-  throw new Error("eslint-plugin-html error: It seems that eslint is not loaded. " +
-                  "If you think it is a bug, please file a report at " +
-                  "https://github.com/BenoitZugmeyer/eslint-plugin-html/issues");
+  throw new Error("eslint-plugin-viper error: It seems that eslint is not loaded. ");
 }
 
-function createProcessor(defaultXMLMode) {
+function createProcessor() {
   var verify = eslint.verify;
-  var reportBadIndent;
-
-  var currentInfos;
 
   function patch() {
     eslint.verify = function (textOrSourceCode, config, filenameOrOptions, saveState) {
-      //var indentDescriptor = config.settings && config.settings["html/indent"];
-      //var xmlMode = config.settings && config.settings["html/xml-mode"];
-      //reportBadIndent = config.settings && config.settings["html/report-bad-indent"];
-
-      //if (typeof xmlMode !== "boolean") {
-        //xmlMode = defaultXMLMode;
-      //}
-
-      //currentInfos = extract(textOrSourceCode, {
-        //indent: indentDescriptor,
-        //reportBadIndent: Boolean(reportBadIndent),
-        //xmlMode: xmlMode,
-      //});
-      //return verify.call(this, currentInfos.code, config, filenameOrOptions, saveState);
+      // 提取/* exported|public */扩展global字段
       extractGlobals(filenameOrOptions.filename).forEach(function(name) {
           config.globals[name] = true;
       });
-      console.log(tmpl(textOrSourceCode));
-      console.log(textOrSourceCode, config, filenameOrOptions, saveState);
+      // tmpl转化模板
       return verify.call(this, tmpl(textOrSourceCode), config, filenameOrOptions, saveState);
     };
   }
@@ -94,25 +47,6 @@ function createProcessor(defaultXMLMode) {
 
     postprocess: function (messages) {
       unpatch();
-
-      //messages[0].forEach(function (message) {
-        //message.column += currentInfos.map[message.line] || 0;
-      //});
-
-      //currentInfos.badIndentationLines.forEach(function (line) {
-        //messages[0].push({
-          //message: "Bad line indentation.",
-          //line: line,
-          //column: 1,
-          //ruleId: "(html plugin)",
-          //severity: reportBadIndent === true ? 2 : reportBadIndent,
-        //});
-      //});
-
-      //messages[0].sort(function (ma, mb) {
-        //return ma.line - mb.line || ma.column - mb.column;
-      //});
-
       return messages[0];
     },
 
@@ -120,18 +54,44 @@ function createProcessor(defaultXMLMode) {
 
 }
 
-var htmlProcessor = createProcessor(false);
-var xmlProcessor = createProcessor(true);
-
 var processors = {};
-
-htmlExtensions.forEach(function(ext) {
-  processors[ext] = htmlProcessor;
-});
-
-xmlExtensions.forEach(function(ext) {
-  processors[ext] = xmlProcessor;
-});
-processors['.js'] = htmlProcessor;
+processors['.js'] = createProcessor(false);
 
 exports.processors = processors;
+
+//--- 测试内容 ----------------------------------------------
+if (process.argv[2] !== '__test__') {
+    return;
+}
+
+console.log('====== extractGlobals ======');
+console.assert(extractGlobals('foo/all.js')[1] == 'Dom__setHtml');
+console.assert(extractGlobals('foo/index.js')[1] == 'Dom__setHtml');
+
+
+console.log('====== recurseUpFindFile ======');
+console.assert(
+    file.recurseUpFindFile('all.js', 'foo') ==
+    file.abspath('foo/all.js', __dirname),
+    '当前目录'
+);
+console.assert(
+    file.recurseUpFindFile('.vimrc', __dirname) ==
+    file.abspath('.vimrc', process.env['HOME']),
+    '递归查找'
+);
+
+console.log('====== findKeyword ======');
+var ALL_FILE = `
+include([
+'./index.js'
+]);
+
+/* public Dom__setHtml */
+/* exported Dom__setHtml */
+`;
+console.assert(findKeyword(ALL_FILE, 'public')[0] == 'Dom__setHtml');
+console.assert(findKeyword(ALL_FILE, 'exported')[0] == 'Dom__setHtml');
+
+console.log('====== parseIncluded ======');
+console.assert(parseIncluded(ALL_FILE)[0] == './index.js');

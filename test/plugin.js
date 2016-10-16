@@ -13,7 +13,7 @@ function execute(file, baseConfig) {
   if (!baseConfig) baseConfig = {};
 
   var cli = new CLIEngine({
-    extensions: ["html"],
+    extensions: ["viper"],
     baseConfig: {
       settings: baseConfig.settings,
       rules: Object.assign({
@@ -24,7 +24,7 @@ function execute(file, baseConfig) {
     ignore: false,
     useEslintrc: false,
   });
-  cli.addPlugin("html", plugin);
+  cli.addPlugin("viper", plugin);
   var results = cli.executeOnFiles([path.join(__dirname, "fixtures", file)]).results;
   return results[0] && results[0].messages;
 }
@@ -33,10 +33,9 @@ function execute(file, baseConfig) {
 
 describe("plugin", function () {
 
-  it("should extract and remap messages", function () {
-    //var messages = execute("simple.html");
+  it("test viper plugin", function () {
     var messages = execute("foo/index.js");
-    console.log(messages);
+    // console.log(messages);
 
     assert.equal(messages.length, 1);
 
