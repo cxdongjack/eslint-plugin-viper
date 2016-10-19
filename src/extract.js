@@ -39,8 +39,8 @@ file.recurseUpFindFile = function(name, dirname) {
 }
 
 // 提取 /* public Dom__setHtml */
-function findKeyword(str, key) {
-    var reg = '/\\* ' + key + ' (.*?) \\*/';
+function findKeyword(str) {
+    var reg = '/\\* +(?:public|exported) +([^ ]*?) +\\*/';
     var names = str.match(new RegExp(reg, 'g'));
     if (!names) {
         return [];
@@ -51,6 +51,7 @@ function findKeyword(str, key) {
 }
 
 // 解析include([...])
+// 只解析直接相关的文件，不进行递归查找
 function parseIncluded(cnt) {
     var include = function(list) {
         return list;
@@ -63,40 +64,32 @@ function parseIncluded(cnt) {
 }
 
 // 根据当前文件提取出所有全局函数
-// 包括当前模块下的/* exports */
-// 包括引用模块下的/* public */
+// 引用模块下的/* (exports|public) */
 function extractGlobals(target) {
     // 找到当前模块的all.js
     var dirname = path.dirname(target);
-    // var all = file.recurseUpFindFile('all.js', dirname);
-    var all = findAll(target);
+    var all = findInclude(target);
     var files = parseIncluded(file.read(all));
-    // 提取模块内的exports
-    var exports = files.filter(function(item) {
-        return file.contain(dirname, file.abspath(item, dirname));
-    }).reduce(function(mem, item) {
-        return mem.concat(findKeyword(file.read(file.abspath(item, dirname)), 'exported'));
+
+    return files.reduce(function(mem, item) {
+        return mem.concat(findKeyword(file.read(file.abspath(item, dirname))));
     }, []);
-    // 提取引用模块的public
-    var globals = files.filter(function(item) {
-        return !file.contain(dirname, file.abspath(item, dirname));
-    }).reduce(function(mem, item) {
-        return mem.concat(findKeyword(file.read(file.abspath(item, dirname)), 'public'));
-    }, []);
-    return exports.concat(globals);
 }
 
-function findAll(target) {
+function findInclude(target) {
     // 如果自身包含返回自身
     if (file.read(target).indexOf('include([') !== -1) {
         return target;
     }
-    // 否则查找递归向上查找all.js
+    // 如果同级目录下有all.js,
+    // 可以把all.js里面的include当做公共include
     var dirname = path.dirname(target);
-    var all = file.recurseUpFindFile('all.js', dirname);
-    return all;
+    var all = file.abspath('all.js', dirname)
+    if (file.exists(all)) {
+        return all;
+    }
 }
 
 module.exports = extractGlobals;
-module.exports.findAll = findAll;
+module.exports.findInclude = findInclude;
 module.exports.parseIncluded = parseIncluded;

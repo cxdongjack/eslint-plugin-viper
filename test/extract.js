@@ -1,17 +1,16 @@
 var assert = require("assert");
 var path = require("path");
 var obj = require("../src/extract");
-console.log(obj.findAll);
 
 describe("plugin", function () {
 
-  it("findAll index.js", function () {
-    var allJs = obj.findAll(path.join(__dirname, "fixtures", "foo/index.js"));
+  it("findInclude index.js", function () {
+    var allJs = obj.findInclude(path.join(__dirname, "fixtures", "foo/index.js"));
     assert.equal(/foo\/all\.js$/.test(allJs), true);
   });
 
-  it("findAll", function () {
-    var allJs = obj.findAll(path.join(__dirname, "fixtures", "foo/all.js"));
+  it("findInclude", function () {
+    var allJs = obj.findInclude(path.join(__dirname, "fixtures", "foo/all.js"));
     assert.equal(/foo\/all\.js$/.test(allJs), true);
   });
 
