@@ -56,6 +56,7 @@ function createProcessor() {
 
 var processors = {};
 processors['.js'] = createProcessor(false);
+processors['.vp'] = createProcessor(false);
 
 exports.processors = processors;
 

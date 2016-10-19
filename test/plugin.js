@@ -37,7 +37,18 @@ describe("plugin", function () {
     var messages = execute("foo/index.js");
     // console.log(messages);
 
-    assert.equal(messages.length, 1);
+    assert.equal(messages.length, 3);
+
+    //assert.equal(messages[0].message, "Unexpected console statement.");
+    //assert.equal(messages[0].line, 8);
+    //assert.equal(messages[0].column, 7);
+  });
+
+  it("test viper plugin", function () {
+    var messages = execute("foo/index.vp");
+    // console.log(messages);
+
+    assert.equal(messages.length, 3);
 
     //assert.equal(messages[0].message, "Unexpected console statement.");
     //assert.equal(messages[0].line, 8);

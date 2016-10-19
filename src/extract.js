@@ -55,10 +55,11 @@ function parseIncluded(cnt) {
     var include = function(list) {
         return list;
     };
-    if (cnt.indexOf('include([') === -1) {
+    var match = cnt.match(/include\s*\([\s\S]+?\)/);
+    if (!match) {
         return;
     }
-    return eval(cnt);
+    return eval(match[0]);
 }
 
 // 根据当前文件提取出所有全局函数
