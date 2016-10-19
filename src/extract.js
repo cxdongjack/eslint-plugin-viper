@@ -69,6 +69,9 @@ function extractGlobals(target) {
     // 找到当前模块的all.js
     var dirname = path.dirname(target);
     var all = findInclude(target);
+    if (!all) {
+        return [];
+    }
     var files = parseIncluded(file.read(all));
 
     return files.reduce(function(mem, item) {

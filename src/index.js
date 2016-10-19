@@ -26,6 +26,8 @@ function createProcessor() {
 
   function patch() {
     eslint.verify = function (textOrSourceCode, config, filenameOrOptions, saveState) {
+      // 加入include全局变量
+      config.globals['include'] = true;
       // 提取/* exported|public */扩展global字段
       extractGlobals(filenameOrOptions.filename).forEach(function(name) {
           config.globals[name] = true;
