@@ -1,42 +1,29 @@
 var fs = require('fs');
 var path = require('path');
 var file = {};
-var target = process.argv[process.argv.length - 1];
 
 file.isroot = function(str) {
+  if (process.platform === 'win32') {
+    return path.normalize(str).slice(1, 3) === ':\\';
+  } else {
     return str.charAt(0) === '/';
-};
-
-file.exists = function(filepath) {
-    return fs.existsSync(filepath);
+  }
 };
 
 file.abspath = function(str, base) {
-    if (!file.isroot(str)) {
-        return path.resolve(path.join(base || process.cwd(), path.normalize(str)));
-    }
-    return str;
-};
-
-file.contain = function(base, filepath) {
-  return path.relative(base, filepath).charAt(0) !== '.';
+  if (!file.isroot(str)) {
+    return path.normalize(path.join(base || process.cwd(), path.normalize(str)));
+  }
+  return str;
 };
 
 file.read = function(filepath) {
   return fs.readFileSync(filepath, 'utf8');
 };
 
-file.recurseUpFindFile = function(name, dirname) {
-    var path;
-    if (dirname == '/') {
-        return;
-    }
-    path = file.abspath(name, dirname)
-    if (file.exists(path)) {
-        return path;
-    }
-    return file.recurseUpFindFile(name, file.abspath('..', dirname));
-}
+file.exists = function(filepath) {
+  return fs.existsSync(filepath);
+};
 
 // 提取 /* public Dom__setHtml */
 function findKeyword(str) {
