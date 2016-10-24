@@ -85,4 +85,25 @@ foo
     assert.equal(foo(), 'foobarfoo');
   });
 
+  it("transclude 多个函数", function () {
+    var bem = function() {
+      return function(html, html2) {
+        return html + html2
+      };
+    };
+    var fooText = `
+{{#foo}}
+{{-bem()()}}
+foo
+{{--}}
+foo
+{{-}}
+{{#}}
+`;
+
+
+    eval(tmpl(fooText));
+    assert.equal(foo(), 'foofoo');
+  });
+
 });
