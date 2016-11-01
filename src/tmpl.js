@@ -44,7 +44,7 @@ function loader__template(tmpl) {
                         code = code.substr(0, code.length - 1);
                     } else {
                         // {{-bem(page)(1)}}, 有body, 也有内容
-                        code = code.substr(0, code.length - 1) + ',';
+                        code = code.substr(0, code.length - 1) + ', ';
                     }
                     return code;
                 }
@@ -55,7 +55,7 @@ function loader__template(tmpl) {
             .replace(c.iterate, function(m, iterate, vname, iname) {
                 if (!iterate) return "';} } out+='";
                 sid+=1; indv=iname || "i"+sid; iterate=unescape(iterate);
-                return "';var arr"+sid+"="+iterate+";if(arr"+sid+") {var "+vname+","+indv+"=-1,l"+sid+"=arr"+sid+".length-1;while("+indv+"<l"+sid+") {"
+                return "';var arr"+sid+"="+iterate+";if(arr"+sid+") {var "+vname+", "+indv+"=-1, l"+sid+"=arr"+sid+".length-1;while("+indv+"<l"+sid+") {"
                     +vname+"=arr"+sid+"["+indv+"+=1];out+='";
             })
             .replace(c.evaluate, function(m, code) {

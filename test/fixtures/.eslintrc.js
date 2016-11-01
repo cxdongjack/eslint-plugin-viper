@@ -1,10 +1,17 @@
+// http://eslint.cn/docs/rules/comma-spacing
 module.exports = {
     "env": {
         "browser": true,
+        "jasmine": true
     },
-    "plugins": ["@dk/viper"],
+    "plugins": ["viper"],
     "extends": "eslint:recommended",
     "rules": {
+        "no-console": [
+            "error", {
+                allow: [ "error" ]
+            }
+        ],
         "indent": [
             "error",
             4
@@ -21,6 +28,7 @@ module.exports = {
             "error",
             "always"
         ],
-        "space-before-blocks": "error"
+        "space-before-blocks": "error",
+        "comma-spacing": "error"
     }
 };
