@@ -1,100 +1,124 @@
-"use strict";
+"use strict"
 
 // inspired by: eslint-plugin-html
 
-var path = require("path");
-var extractGlobals = require("./extract");
+const path = require("path")
+const semver = require("semver")
 var tmpl = require("./tmpl");
 
-var needle = path.join("lib", "eslint.js");
-var eslint;
-for (var key in require.cache) {
-  if (key.indexOf(needle, key.length - needle.length) >= 0) {
-    eslint = require(key);
-    if (typeof eslint.verify === "function") {
-      break;
+const BOM = "\uFEFF"
+
+// Disclaimer:
+//
+// This is not a long term viable solution. ESLint needs to improve its processor API to
+// provide access to the configuration before actually preprocess files, but it's not
+// planed yet. This solution is quite ugly but shouldn't alter eslint process.
+//
+// Related github issues:
+// https://github.com/eslint/eslint/issues/3422
+// https://github.com/eslint/eslint/issues/4153
+
+const needleV3 = path.join("lib", "eslint.js")
+const needleV4 = path.join("lib", "linter.js")
+
+iterateESLintModules(patch)
+
+function getModulesFromRequire() {
+  const version = require("eslint/package.json").version
+
+  const eslint = semver.satisfies(version, ">= 4")
+    ? require("eslint/lib/linter").prototype
+    : require("eslint/lib/eslint")
+
+  return {
+    version,
+    eslint,
+    SourceCodeFixer: require("eslint/lib/util/source-code-fixer"),
+  }
+}
+
+function getModulesFromCache(key) {
+  if (!key.endsWith(needleV3) && !key.endsWith(needleV4)) return
+
+  const module = require.cache[key]
+  if (!module || !module.exports) return
+
+  const version = require(path.join(key, "..", "..", "package.json")).version
+
+  const SourceCodeFixer =
+    require.cache[path.join(key, "..", "util", "source-code-fixer.js")]
+
+  if (!SourceCodeFixer || !SourceCodeFixer.exports) return
+
+  const eslint = semver.satisfies(version, ">= 4")
+    ? module.exports.prototype
+    : module.exports
+  if (typeof eslint.verify !== "function") return
+
+  return {
+    version,
+    eslint,
+    SourceCodeFixer: SourceCodeFixer.exports,
+  }
+}
+
+function iterateESLintModules(fn) {
+  if (!require.cache || Object.keys(require.cache).length === 0) {
+    // Jest is replacing the node "require" function, and "require.cache" isn't available here.
+    fn(getModulesFromRequire())
+    return
+  }
+
+  let found = false
+
+  for (const key in require.cache) {
+    const modules = getModulesFromCache(key)
+    if (modules) {
+      fn(modules)
+      found = true
     }
   }
+
+  if (!found) {
+    throw new Error(
+      `
+      eslint-plugin-html error: It seems that eslint is not loaded.
+      If you think it is a bug, please file a report at
+      https://github.com/BenoitZugmeyer/eslint-plugin-html/issues
+    `
+    )
+  }
 }
 
-if (!eslint) {
-  throw new Error("eslint-plugin-viper error: It seems that eslint is not loaded. ");
-}
+function patch(modules) {
+  const eslint = modules.eslint
+  const SourceCodeFixer = modules.SourceCodeFixer
 
-function createProcessor() {
-  var verify = eslint.verify;
+  const sourceCodeForMessages = new WeakMap()
 
-  function patch() {
-    eslint.verify = function (textOrSourceCode, config, filenameOrOptions, saveState) {
-      // 加入include全局变量
-      config.globals['include'] = true;
-      // 提取/* exported|public */扩展global字段
-      extractGlobals(filenameOrOptions.filename).forEach(function(name) {
-          config.globals[name] = true;
-      });
-      // tmpl转化模板
-      return verify.call(this, tmpl(textOrSourceCode), config, filenameOrOptions, saveState);
-    };
+  const verify = eslint.verify
+  eslint.verify = function(
+    textOrSourceCode,
+    config,
+    filenameOrOptions,
+    saveState
+  ) {
+    return verify.call(this, tmpl(textOrSourceCode), config, filenameOrOptions, saveState);
   }
 
-  function unpatch() {
-    eslint.verify = verify;
+  const applyFixes = SourceCodeFixer.applyFixes
+  SourceCodeFixer.applyFixes = function(sourceCode, messages) {
+    const originalSourceCode = sourceCodeForMessages.get(messages)
+    if (originalSourceCode) {
+      const hasBOM = originalSourceCode.startsWith(BOM)
+      sourceCode = semver.satisfies(modules.version, ">= 4.6.0")
+        ? originalSourceCode
+        : {
+          text: hasBOM ? originalSourceCode.slice(1) : originalSourceCode,
+          hasBOM,
+        }
+    }
+    return applyFixes.call(this, sourceCode, messages)
   }
-  return {
-
-    preprocess: function (content) {
-      patch();
-      return [content];
-    },
-
-    postprocess: function (messages) {
-      unpatch();
-      return messages[0];
-    },
-
-  };
-
 }
 
-var processors = {};
-processors['.js'] = createProcessor(false);
-processors['.vp'] = createProcessor(false);
-
-exports.processors = processors;
-
-//--- 测试内容 ----------------------------------------------
-if (process.argv[2] !== '__test__') {
-    return;
-}
-
-console.log('====== extractGlobals ======');
-console.assert(extractGlobals('foo/all.js')[1] == 'Dom__setHtml');
-console.assert(extractGlobals('foo/index.js')[1] == 'Dom__setHtml');
-
-
-console.log('====== recurseUpFindFile ======');
-console.assert(
-    file.recurseUpFindFile('all.js', 'foo') ==
-    file.abspath('foo/all.js', __dirname),
-    '当前目录'
-);
-console.assert(
-    file.recurseUpFindFile('.vimrc', __dirname) ==
-    file.abspath('.vimrc', process.env['HOME']),
-    '递归查找'
-);
-
-console.log('====== findKeyword ======');
-var ALL_FILE = `
-include([
-'./index.js'
-]);
-
-/* public Dom__setHtml */
-/* exported Dom__setHtml */
-`;
-console.assert(findKeyword(ALL_FILE, 'public')[0] == 'Dom__setHtml');
-console.assert(findKeyword(ALL_FILE, 'exported')[0] == 'Dom__setHtml');
-
-console.log('====== parseIncluded ======');
-console.assert(parseIncluded(ALL_FILE)[0] == './index.js');
